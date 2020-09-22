@@ -6,6 +6,7 @@ class Contact {
   String email;
   String phone;
   String img;
+  String data;
 
   Contact();
 
@@ -15,6 +16,7 @@ class Contact {
     email = map[emailColumn];
     phone = map[phoneColumn];
     img = map[imgColumn];
+    data = map[dataColumn];
   }
 
   Map toMap() {
@@ -23,6 +25,7 @@ class Contact {
       emailColumn: email,
       phoneColumn: phone,
       imgColumn: img,
+      dataColumn: data,
     };
     if (id != null) {
       map[idColumn] = id;
@@ -32,6 +35,6 @@ class Contact {
 
   @override
   String toString() {
-    return "Contact(id: $id, name: $name, email: $email, phone: $phone, img: $img)";
+    return "Contact(id: $id, name: $name, email: $email, phone: $phone, img: $img, data: $data)";
   }
 }
