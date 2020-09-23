@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/helpers/contact_helper.dart';
-import 'package:my_app/objects/contact.dart';
-import 'package:my_app/objects/ordem_enum.dart';
-import 'package:my_app/ui/contact/contact_page.dart';
-import 'package:my_app/ui/home/components/contact_card.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:my_app/helpers/categoryList.dart';
+import 'package:my_app/objects/categoria.dart';
+import 'package:my_app/objects/financia.dart';
+import 'package:my_app/ui/home/components/card_financia.dart';
+import 'package:my_app/ui/home/components/new_finance.dart';
+import 'package:my_app/user_model.dart';
+import 'package:provider/provider.dart';
+import 'package:syncfusion_flutter_charts/charts.dart';
+
+import 'package:supercharged/supercharged.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -12,224 +16,212 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  ContactHelper helper = ContactHelper();
-
-  List<Contact> contacts = List();
+  GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void initState() {
     super.initState();
-
-    _getAllContacts();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
-        title: Text("Contatos"),
+        title: Text("App Financias"),
         backgroundColor: Colors.black87,
         centerTitle: true,
-        actions: <Widget>[
-          PopupMenuButton<OrderOptions>(
-            itemBuilder: (context) => <PopupMenuEntry<OrderOptions>>[
-              const PopupMenuItem<OrderOptions>(
-                child: Text("Ordenar por Nome de A-Z"),
-                value: OrderOptions.orderAsc,
-              ),
-              const PopupMenuItem<OrderOptions>(
-                child: Text("Ordenar por Nome de Z-A"),
-                value: OrderOptions.orderDesc,
-              ),
-              const PopupMenuItem<OrderOptions>(
-                child: Text("Ordenar por Email de A-Z"),
-                value: OrderOptions.orderEmailAsc,
-              ),
-              const PopupMenuItem<OrderOptions>(
-                child: Text("Ordenar por Email de Z-A"),
-                value: OrderOptions.orderEmailDesc,
-              ),
-            ],
-            onSelected: orderList,
-          ),
+        leading: IconButton(
+          onPressed: () {
+            showDialog(
+                context: context,
+                builder: (_) {
+                  return Center(
+                    child: Container(
+                      width: MediaQuery.of(context).size.width * 0.95,
+                      height: MediaQuery.of(context).size.height * 0.9,
+                      child: Card(
+                        child: Padding(
+                          padding: EdgeInsets.only(left: 10, right: 10, top: 20, bottom: 20),
+                          child: Consumer<UserModel>(
+                            builder: (_, userModel, __) {
+                              return SfCircularChart(
+                                title: ChartTitle(
+                                    text: 'Receitas por Categoria',
+                                    textStyle: TextStyle(
+                                      fontSize: 16.0,
+                                    )),
+                                tooltipBehavior: TooltipBehavior(enable: true, format: 'point.x: point.y%'),
+                                legend: Legend(
+                                    backgroundColor: Color.fromARGB(255, 242, 242, 242),
+                                    isVisible: true,
+                                    isResponsive: true,
+                                    position: LegendPosition.top,
+                                    overflowMode: LegendItemOverflowMode.wrap),
+                                series: categorias
+                                    .map((e) => PieSeries<Categoria, String>(
+                                        explode: true,
+                                        animationDuration: 2000,
+                                        explodeIndex: 0,
+                                        explodeOffset: '15%',
+                                        enableTooltip: true,
+                                        dataSource: categorias,
+                                        enableSmartLabels: true,
+                                        xValueMapper: (Categoria data, _) => e.descricao,
+                                        yValueMapper: (Categoria data, _) => userModel.financias.where((element) => element.categoria == e.id).toList().sumByDouble((a) => a.valor),
+                                        dataLabelSettings: DataLabelSettings(
+                                          labelPosition: ChartDataLabelPosition.outside,
+                                          alignment: ChartAlignment.far,
+                                          isVisible: false,
+                                        )))
+                                    .toList(),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                });
+          },
+          color: Colors.white,
+          icon: Icon(Icons.category),
+        ),
+        actions: [
+          IconButton(
+            onPressed: () {
+              _addNewFinance();
+            },
+            icon: Icon(Icons.add),
+            color: Colors.white,
+          )
         ],
       ),
       backgroundColor: Colors.white,
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showContactPage,
-        child: Icon(Icons.add),
-        backgroundColor: Colors.black87,
-      ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(10.0),
-        itemCount: contacts.length,
-        itemBuilder: (_, index) {
-          return ContactCard(
-            contact: contacts[index],
-            onTap: () => _showOptions(context, index),
-          );
-        },
-      ),
+      body: Consumer<UserModel>(builder: (_, userModel, __) {
+        return Column(
+          children: [
+            Expanded(
+              child: userModel.loading
+                  ? Center(child: CircularProgressIndicator())
+                  : userModel.financias.length == 0
+                      ? Center(
+                          child: Container(
+                            child: Text(
+                              "Não existem Financia no aplicativo",
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(10.0),
+                          shrinkWrap: true,
+                          itemCount: userModel.financias.length,
+                          itemBuilder: (_, index) {
+                            return CardFinancia(
+                              financia: userModel.financias[index],
+                            );
+                          },
+                        ),
+            ),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.black87,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.5),
+                    spreadRadius: 1,
+                    blurRadius: 4,
+                    offset: Offset(1, 0),
+                  ),
+                ],
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(12),
+                  topRight: Radius.circular(12),
+                ),
+              ),
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(10, 20, 10, 0),
+                physics: NeverScrollableScrollPhysics(),
+                shrinkWrap: true,
+                children: [
+                  line(
+                    descricao: "Receitas",
+                    value: "R\$ ${userModel.receitas.toStringAsFixed(2)}",
+                    color: Colors.green,
+                  ),
+                  line(
+                    descricao: "Despesas",
+                    value: "R\$ ${userModel.despesas.toStringAsFixed(2)}",
+                    color: Colors.red,
+                  ),
+                  line(
+                    descricao: "Balanço Geral",
+                    value: "R\$ ${userModel.balanco.toStringAsFixed(2)}",
+                    color: Colors.blue,
+                    fontSize: 22,
+                  ),
+                ],
+              ),
+            )
+          ],
+        );
+      }),
     );
   }
 
-  void _getAllContacts() {
-    helper.getAllContacts().then((list) {
-      setState(() {
-        contacts = list;
-      });
-    });
+  Widget line({
+    @required String descricao,
+    @required String value,
+    @required Color color,
+    double fontSize = 18,
+  }) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Text(
+              descricao,
+              style: TextStyle(fontSize: fontSize, color: Colors.white),
+            ),
+            Spacer(),
+            Text(
+              value,
+              style: TextStyle(fontSize: fontSize, color: color),
+            ),
+          ],
+        ),
+        Divider(color: Colors.white),
+        const SizedBox(height: 8),
+      ],
+    );
   }
 
-  void _showOptions(context, index) {
-    showModalBottomSheet(
-        context: context,
-        builder: (context) {
-          return BottomSheet(
-
-            onClosing: () {},
-            builder: (context) {
-              return Container(
-                child: ListView(
-                  shrinkWrap: true,
-                  children: <Widget>[
-                    Padding(
-                      padding: EdgeInsets.all(10.0),
-                      child: FlatButton(
-                        child: Text(
-                          "Ligar",
-                          style: TextStyle(color: Colors.red, fontSize: 20.0),
-                        ),
-                        onPressed: () {
-                          launch("tel:${contacts[index].phone}");
-                          Navigator.pop(context);
-                        },
-                      ),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.all(10.0),
-                      child: FlatButton(
-                        child: Text(
-                          "Conversar no Whatsapp",
-                          style: TextStyle(color: Colors.red, fontSize: 20.0),
-                        ),
-                        onPressed: () {
-                           launch("whatsapp://send?phone=55053${contacts[index].phone}&text=");
-                          Navigator.pop(context);
-                        },
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(10.0),
-                      child: FlatButton(
-                        child: Text(
-                          "Enviar E-mail",
-                          style: TextStyle(color: Colors.red, fontSize: 20.0),
-                        ),
-                        onPressed: () {
-                          launch("mailto:<${contacts[index].email}>");
-                          Navigator.pop(context);
-                        },
-                      ),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.all(10.0),
-                      child: FlatButton(
-                        child: Text(
-                          "Editar",
-                          style: TextStyle(color: Colors.red, fontSize: 20.0),
-                        ),
-                        onPressed: () {
-                          Navigator.pop(context);
-                          _showContactPage(contact: contacts[index]);
-                        },
-                      ),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.all(10.0),
-                      child: FlatButton(
-                        child: Text(
-                          "Excluir",
-                          style: TextStyle(color: Colors.red, fontSize: 20.0),
-                        ),
-                        onPressed: () {
-                          showDialog(
-                              context: context,
-                              builder: (context) {
-                                return AlertDialog(
-                                  title: Text("Deseja excluir?"),
-                                  content: Text("Os dados do Contato serão perdidos"),
-                                  actions: <Widget>[
-                                    FlatButton(
-                                      child: Text("Cancelar"),
-                                      onPressed: () {
-                                        Navigator.pop(context);
-                                      },
-                                    ),
-                                    FlatButton(
-                                      child: Text("Sim"),
-                                      onPressed: () {
-                                        helper.deleteContact(contacts[index].id);
-                                        setState(() {
-                                          contacts.removeAt(index);
-                                          Navigator.pop(context);
-                                          Navigator.pop(context);
-                                        });
-                                      },
-                                    ),
-                                  ],
-                                );
-                              });
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          );
-        });
-  }
-
-  Future<void> _showContactPage({@required Contact contact}) async {
-    final recContact = await Navigator.push(
-        context,
-        MaterialPageRoute(
-            builder: (_) => ContactPage(
-                  contact: contact,
-                )));
-    if (recContact != null) {
-      if (contact != null)
-        await helper.updateContact(recContact);
-      else
-        await helper.saveContact(recContact);
-      _getAllContacts();
-    }
-  }
-
-  void orderList(OrderOptions result) {
-    switch (result) {
-      case OrderOptions.orderAsc:
-        contacts.sort((a, b) {
-          return a.name.toLowerCase().compareTo(b.name.toLowerCase());
-        });
-        break;
-      case OrderOptions.orderDesc:
-        contacts.sort((a, b) {
-          return b.name.toLowerCase().compareTo(a.name.toLowerCase());
-        });
-        break;
-      case OrderOptions.orderEmailAsc:
-        contacts.sort((a, b) {
-          return a.email.toLowerCase().compareTo(b.email.toLowerCase());
-        });
-        break;
-      case OrderOptions.orderEmailDesc:
-        contacts.sort((a, b) {
-          return b.email.toLowerCase().compareTo(a.email.toLowerCase());
-        });
-        break;
-    }
-    setState(() {});
+  _addNewFinance() {
+    Color color = Financia.colorFromTipo(0);
+    _scaffoldKey.currentState.showSnackBar(SnackBar(
+      duration: Duration(days: 1),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(30),
+          topRight: Radius.circular(30),
+        ),
+      ),
+      backgroundColor: color,
+      content: NewFinance(
+        onCancel: () => _scaffoldKey.currentState.hideCurrentSnackBar(),
+        changeTipo: (tipo) => setState(() {
+          color = Financia.colorFromTipo(tipo);
+          print(color.toString());
+          print(tipo);
+        }),
+        onSave: (financia) async {
+          await context.read<UserModel>().saveFinancia(financia);
+          _scaffoldKey.currentState.hideCurrentSnackBar();
+        },
+      ),
+    ));
   }
 }
