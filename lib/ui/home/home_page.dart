@@ -1,14 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/helpers/categoryList.dart';
-import 'package:my_app/objects/categoria.dart';
 import 'package:my_app/objects/financia.dart';
 import 'package:my_app/ui/home/components/card_financia.dart';
 import 'package:my_app/ui/home/components/new_finance.dart';
+import 'package:my_app/ui/home/utils/show_graffic.dart';
 import 'package:my_app/user_model.dart';
 import 'package:provider/provider.dart';
-import 'package:syncfusion_flutter_charts/charts.dart';
-
-import 'package:supercharged/supercharged.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -34,56 +30,20 @@ class _HomePageState extends State<HomePage> {
         centerTitle: true,
         leading: IconButton(
           onPressed: () {
-            showDialog(
-                context: context,
-                builder: (_) {
-                  return Center(
-                    child: Container(
-                      width: MediaQuery.of(context).size.width * 0.95,
-                      height: MediaQuery.of(context).size.height * 0.9,
-                      child: Card(
-                        child: Padding(
-                          padding: EdgeInsets.only(left: 10, right: 10, top: 20, bottom: 20),
-                          child: Consumer<UserModel>(
-                            builder: (_, userModel, __) {
-                              return SfCircularChart(
-                                title: ChartTitle(
-                                    text: 'Receitas por Categoria',
-                                    textStyle: TextStyle(
-                                      fontSize: 16.0,
-                                    )),
-                                tooltipBehavior: TooltipBehavior(enable: true, format: 'point.x: point.y%'),
-                                legend: Legend(
-                                    backgroundColor: Color.fromARGB(255, 242, 242, 242),
-                                    isVisible: true,
-                                    isResponsive: true,
-                                    position: LegendPosition.top,
-                                    overflowMode: LegendItemOverflowMode.wrap),
-                                series: categorias
-                                    .map((e) => PieSeries<Categoria, String>(
-                                        explode: true,
-                                        animationDuration: 2000,
-                                        explodeIndex: 0,
-                                        explodeOffset: '15%',
-                                        enableTooltip: true,
-                                        dataSource: categorias,
-                                        enableSmartLabels: true,
-                                        xValueMapper: (Categoria data, _) => e.descricao,
-                                        yValueMapper: (Categoria data, _) => userModel.financias.where((element) => element.categoria == e.id).toList().sumByDouble((a) => a.valor),
-                                        dataLabelSettings: DataLabelSettings(
-                                          labelPosition: ChartDataLabelPosition.outside,
-                                          alignment: ChartAlignment.far,
-                                          isVisible: false,
-                                        )))
-                                    .toList(),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                });
+            if (context.read<UserModel>().financias.length > 2)
+              showGraffic(context);
+            else
+              _scaffoldKey.currentState.showSnackBar(
+                SnackBar(
+                  duration: Duration(seconds: 2),
+                  elevation: 2,
+                  backgroundColor: Colors.red,
+                  content: Container(
+                    height: 40,
+                    child: Center(child: Text("Poucas finâncias para montar as estatísticas")),
+                  ),
+                ),
+              );
           },
           color: Colors.white,
           icon: Icon(Icons.category),
@@ -109,7 +69,7 @@ class _HomePageState extends State<HomePage> {
                       ? Center(
                           child: Container(
                             child: Text(
-                              "Não existem Financia no aplicativo",
+                              "Não existem Financia no momento",
                               style: TextStyle(color: Colors.red),
                             ),
                           ),

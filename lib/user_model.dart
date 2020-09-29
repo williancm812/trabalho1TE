@@ -3,6 +3,8 @@ import 'package:flutter/cupertino.dart';
 import 'helpers/helper.dart';
 import 'objects/financia.dart';
 
+import 'package:supercharged/supercharged.dart';
+
 class UserModel extends ChangeNotifier {
   DbHelper helper = DbHelper();
 
@@ -21,12 +23,8 @@ class UserModel extends ChangeNotifier {
   void _recalcule() {
     _receitas = 0.0;
     _despesas = 0.0;
-    financias.where((element) => element.tipo == 1).toList().forEach((element) {
-      _receitas += element.valor;
-    });
-    financias.where((element) => element.tipo == 2).toList().forEach((element) {
-      _despesas += element.valor;
-    });
+    _receitas = financias.where((element) => element.tipo == 1).toList().sumByDouble((element) => element.valor);
+    _despesas = financias.where((element) => element.tipo == 2).toList().sumByDouble((element) => element.valor);
     balanco = _receitas - _despesas;
   }
 
@@ -40,6 +38,12 @@ class UserModel extends ChangeNotifier {
   Future<void> saveFinancia(Financia financia) async {
     financia = await helper.saveFinancia(financia);
     financias.add(financia);
+    _recalcule();
+  }
+
+  Future<void> deleteFinancia(Financia financia) async {
+    await helper.deleteFinancia(financia.id);
+    financias.removeWhere((element) => element.id == financia.id);
     _recalcule();
   }
 
