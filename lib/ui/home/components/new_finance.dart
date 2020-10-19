@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/helpers/acresZero.dart';
-import 'package:my_app/helpers/categoryList.dart';
 import 'package:my_app/helpers/validators.dart';
 import 'package:my_app/objects/categoria.dart';
 import 'package:my_app/objects/financia.dart';
+import 'package:provider/provider.dart';
+
+import '../../../user_model.dart';
 
 // ignore: must_be_immutable
 class NewFinance extends StatefulWidget {
@@ -125,11 +127,13 @@ class _NewFinanceState extends State<NewFinance> {
                         const SizedBox(width: 20),
                         DropdownButton(
                           hint: Text("Escolher: "),
-                          items: categorias
+                          items: context
+                              .watch<UserModel>()
+                              .categorias
                               .map((item) => DropdownMenuItem(
                                     child: Row(
                                       children: [
-                                        Container(height: 15,width: 15, color: item.color),
+                                        Container(height: 15, width: 15, color: item.color),
                                         const SizedBox(width: 8),
                                         Text(item.descricao, style: TextStyle(fontSize: 20)),
                                       ],
@@ -143,7 +147,12 @@ class _NewFinanceState extends State<NewFinance> {
                             });
                             FocusScope.of(context).unfocus();
                           },
-                          value: categorias.firstWhere((element) => element.id == financia.categoria),
+                          value: financia.categoria == ''
+                              ? null
+                              : context
+                                  .watch<UserModel>()
+                                  .categorias
+                                  .firstWhere((element) => element.id == financia.categoria),
                         ),
                       ],
                     ),

@@ -1,7 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 class Categoria {
-  int id;
+  String id;
   String descricao;
   Color color;
 
@@ -11,5 +12,9 @@ class Categoria {
     @required this.color,
   });
 
-
+  Categoria.fromDocument(QueryDocumentSnapshot doc) {
+    id = doc.id;
+    descricao = doc.data()['descricao'];
+    color = Color(int.parse(doc.data()['color']));
+  }
 }

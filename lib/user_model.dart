@@ -1,14 +1,16 @@
 import 'package:flutter/cupertino.dart';
-
-import 'helpers/helper.dart';
-import 'objects/financia.dart';
-
+import 'package:flutter/material.dart';
+import 'package:my_app/helpers/firebaseHelper.dart';
+import 'package:my_app/objects/categoria.dart';
 import 'package:supercharged/supercharged.dart';
 
+import 'objects/financia.dart';
+
 class UserModel extends ChangeNotifier {
-  DbHelper helper = DbHelper();
+  FirebaseHelper helper = FirebaseHelper();
 
   UserModel() {
+    helper.getAllCategoria().then((value) => categorias = value);
     _getAllFinancias();
   }
 
@@ -19,6 +21,15 @@ class UserModel extends ChangeNotifier {
   double _balanco = 0.0;
 
   List<Financia> _financias = [];
+  List<Categoria> categorias = [];
+
+  Color colorFromCategoria(String categoria) {
+    try{
+      return categorias.firstWhere((element) => element.id == categoria).color;
+    } catch(e){
+      return Colors.transparent;
+    }
+  }
 
   void _recalcule() {
     _receitas = 0.0;

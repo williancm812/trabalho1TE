@@ -27,7 +27,7 @@ class CardFinancia extends StatelessWidget {
               Container(
                 width: 30,
                 height: 40,
-                color: Financia.colorFromCategoria(financia.categoria),
+                color: context.watch<UserModel>().colorFromCategoria(financia.categoria),
               ),
               const SizedBox(width: 8),
               Column(

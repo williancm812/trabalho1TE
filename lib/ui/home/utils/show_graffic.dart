@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/helpers/categoryList.dart';
 import 'package:my_app/objects/categoria.dart';
 import 'package:my_app/objects/financia.dart';
 import 'package:provider/provider.dart';
@@ -10,6 +9,7 @@ import '../../../user_model.dart';
 
 void showGraffic(BuildContext context) {
   List<Financia> valores = context.read<UserModel>().financias.where((element) => element.tipo == 1).toList();
+  List<Categoria> categorias = context.read<UserModel>().categorias;
   int tipoSelected = 1;
   showDialog(
       context: context,
