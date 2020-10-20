@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:my_app/helpers/SearchDialog.dart';
+import 'package:my_app/helpers/progressDialog.dart';
 import 'package:my_app/objects/financia.dart';
 import 'package:my_app/ui/home/components/card_financia.dart';
 import 'package:my_app/ui/home/components/new_finance.dart';
@@ -25,107 +27,171 @@ class _HomePageState extends State<HomePage> {
       key: _scaffoldKey,
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
-        title: Text("App Financias"),
         backgroundColor: Colors.black87,
-        centerTitle: true,
-        leading: IconButton(
-          onPressed: () {
-            if (context.read<UserModel>().financias.length > 2)
-              showGraffic(context);
-            else
-              _scaffoldKey.currentState.showSnackBar(
-                SnackBar(
-                  duration: Duration(seconds: 2),
-                  elevation: 2,
-                  backgroundColor: Colors.red,
-                  content: Container(
-                    height: 40,
-                    child: Center(child: Text("Poucas finâncias para montar as estatísticas")),
-                  ),
-                ),
+        title: Consumer<UserModel>(builder: (_, model, __) {
+          if (model.search.isEmpty) {
+            return const Text("App Financias");
+          }
+          return LayoutBuilder(builder: (_, constraints) {
+            return GestureDetector(
+                onTap: () async {
+                  final search = await showDialog<String>(
+                      context: context, builder: (_) => SearchDialog(initialtext: model.search));
+
+                  if (search != null) {
+                    model.search = search;
+                  }
+                },
+                child: Container(
+                    width: constraints.biggest.width,
+                    child: Text(
+                      model.search,
+                      textAlign: TextAlign.center,
+                    )));
+          });
+        }),
+        actions: <Widget>[
+          Consumer<UserModel>(
+            builder: (_, model, __) {
+              if (model.search.isEmpty) {
+                return IconButton(
+                  icon: Icon(Icons.search),
+                  onPressed: () async {
+                    final search = await showDialog<String>(
+                      context: context,
+                      builder: (_) => SearchDialog(
+                        initialtext: model.search,
+                      ),
+                    );
+
+                    if (search != null) {
+                      model.search = search;
+                    }
+                  },
+                );
+              }
+              return IconButton(
+                icon: Icon(Icons.close),
+                onPressed: () async {
+                  model.search = '';
+                },
               );
-          },
-          color: Colors.white,
-          icon: Icon(Icons.category),
-        ),
-        actions: [
-          IconButton(
-            onPressed: () {
-              _addNewFinance();
             },
+          ),
+          IconButton(
             icon: Icon(Icons.add),
-            color: Colors.white,
+            onPressed: () => _addNewFinance(),
           )
         ],
       ),
       backgroundColor: Colors.white,
       body: Consumer<UserModel>(builder: (_, userModel, __) {
-        return Column(
-          children: [
-            Expanded(
-              child: userModel.loading
-                  ? Center(child: CircularProgressIndicator())
-                  : userModel.financias.length == 0
-                      ? Center(
-                          child: Container(
-                            child: Text(
-                              "Não existem Financia no momento",
-                              style: TextStyle(color: Colors.red),
+        return RefreshIndicator(
+          onRefresh: () async {
+            await context.read<UserModel>().getAllCategoria();
+            await context.read<UserModel>().getAllFinancias();
+          },
+          child: Column(
+            children: [
+              Expanded(
+                child: userModel.loading
+                    ? Center(child: CircularProgressIndicator())
+                    : userModel.financias.length == 0
+                        ? Center(
+                            child: Container(
+                              child: Text(
+                                "Não existem Financia no momento",
+                                style: TextStyle(color: Colors.red),
+                              ),
                             ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(10.0),
+                            shrinkWrap: true,
+                            itemCount: userModel.financias
+                                .where((element) => userModel.search.isEmpty
+                                    ? true
+                                    : element.descricao.toLowerCase().contains(userModel.search.toLowerCase()))
+                                .toList()
+                                .length,
+                            itemBuilder: (_, index) {
+                              return CardFinancia(
+                                financia: userModel.financias
+                                    .where((element) => userModel.search.isEmpty
+                                        ? true
+                                        : element.descricao.toLowerCase().contains(userModel.search.toLowerCase()))
+                                    .toList()[index],
+                                onTap: () async {
+                                  _scaffoldKey.currentState.showSnackBar(SnackBar(
+                                    duration: Duration(days: 1),
+                                    elevation: 2,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.only(
+                                        topLeft: Radius.circular(30),
+                                        topRight: Radius.circular(30),
+                                      ),
+                                    ),
+                                    backgroundColor: Colors.black87,
+                                    content: NewFinance(
+                                      financia: userModel.financias
+                                          .where((element) => userModel.search.isEmpty
+                                              ? true
+                                              : element.descricao
+                                                  .toLowerCase()
+                                                  .contains(userModel.search.toLowerCase()))
+                                          .toList()[index],
+                                      onCancel: () => _scaffoldKey.currentState.hideCurrentSnackBar(),
+                                      changeTipo: (tipo) => null,
+                                      onSave: (financia) => null,
+                                    ),
+                                  ));
+                                },
+                              );
+                            },
                           ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(10.0),
-                          shrinkWrap: true,
-                          itemCount: userModel.financias.length,
-                          itemBuilder: (_, index) {
-                            return CardFinancia(
-                              financia: userModel.financias[index],
-                            );
-                          },
-                        ),
-            ),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.black87,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.5),
-                    spreadRadius: 1,
-                    blurRadius: 4,
-                    offset: Offset(1, 0),
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.black87,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.5),
+                      spreadRadius: 1,
+                      blurRadius: 4,
+                      offset: Offset(1, 0),
+                    ),
+                  ],
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    topRight: Radius.circular(12),
                   ),
-                ],
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(12),
-                  topRight: Radius.circular(12),
                 ),
-              ),
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(10, 20, 10, 0),
-                physics: NeverScrollableScrollPhysics(),
-                shrinkWrap: true,
-                children: [
-                  line(
-                    descricao: "Receitas",
-                    value: "R\$ ${userModel.receitas.toStringAsFixed(2)}",
-                    color: Colors.green,
-                  ),
-                  line(
-                    descricao: "Despesas",
-                    value: "R\$ ${userModel.despesas.toStringAsFixed(2)}",
-                    color: Colors.red,
-                  ),
-                  line(
-                    descricao: "Balanço Geral",
-                    value: "R\$ ${userModel.balanco.toStringAsFixed(2)}",
-                    color: Colors.blue,
-                    fontSize: 22,
-                  ),
-                ],
-              ),
-            )
-          ],
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(10, 20, 10, 0),
+                  physics: NeverScrollableScrollPhysics(),
+                  shrinkWrap: true,
+                  children: [
+                    line(
+                      descricao: "Receitas",
+                      value: "R\$ ${userModel.receitas.toStringAsFixed(2)}",
+                      color: Colors.green,
+                    ),
+                    line(
+                      descricao: "Despesas",
+                      value: "R\$ ${userModel.despesas.toStringAsFixed(2)}",
+                      color: Colors.red,
+                    ),
+                    line(
+                      descricao: "Balanço Geral",
+                      value: "R\$ ${userModel.balanco.toStringAsFixed(2)}",
+                      color: Colors.blue,
+                      fontSize: 22,
+                    ),
+                  ],
+                ),
+              )
+            ],
+          ),
         );
       }),
     );
@@ -178,8 +244,22 @@ class _HomePageState extends State<HomePage> {
           print(tipo);
         }),
         onSave: (financia) async {
-          await context.read<UserModel>().saveFinancia(financia);
           _scaffoldKey.currentState.hideCurrentSnackBar();
+          progressDialog(context);
+          await context.read<UserModel>().saveFinancia(financia, () {
+            _scaffoldKey.currentState.showSnackBar(
+              SnackBar(
+                duration: Duration(seconds: 2),
+                elevation: 2,
+                backgroundColor: Colors.red,
+                content: Container(
+                  height: 40,
+                  child: Center(child: Text("Ocorreu um erro ao salvar sua Financia, tente novamente")),
+                ),
+              ),
+            );
+          });
+          Navigator.pop(context);
         },
       ),
     ));

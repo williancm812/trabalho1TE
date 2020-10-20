@@ -9,13 +9,13 @@ dependencies:
   flutter:
     sdk: flutter
 
-  sqflite: ^1.1.5
   url_launcher: ^5.0.2
-  image_picker: ^0.6.0+3
+  image_picker: ^0.6.6+1
   provider: ^4.3.2+2
   syncfusion_flutter_charts: ^18.2.57
   supercharged: ^1.10.0
   cloud_firestore: ^0.14.1+3
+  firebase_storage: ^4.0.1
 
 dev_dependencies:
   flutter_test:

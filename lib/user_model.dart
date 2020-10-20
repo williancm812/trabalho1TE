@@ -1,7 +1,11 @@
+import 'dart:io';
+
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:my_app/helpers/firebaseHelper.dart';
 import 'package:my_app/objects/categoria.dart';
+import 'package:path/path.dart';
 import 'package:supercharged/supercharged.dart';
 
 import 'objects/financia.dart';
@@ -10,8 +14,8 @@ class UserModel extends ChangeNotifier {
   FirebaseHelper helper = FirebaseHelper();
 
   UserModel() {
-    helper.getAllCategoria().then((value) => categorias = value);
-    _getAllFinancias();
+    getAllCategoria();
+    getAllFinancias();
   }
 
   bool _loading = false;
@@ -19,14 +23,22 @@ class UserModel extends ChangeNotifier {
   double _receitas = 0.0;
   double _despesas = 0.0;
   double _balanco = 0.0;
+  String _search = "";
+
+  String get search => _search;
+
+  set search(String value) {
+    _search = value;
+    notifyListeners();
+  }
 
   List<Financia> _financias = [];
   List<Categoria> categorias = [];
 
   Color colorFromCategoria(String categoria) {
-    try{
+    try {
       return categorias.firstWhere((element) => element.id == categoria).color;
-    } catch(e){
+    } catch (e) {
       return Colors.transparent;
     }
   }
@@ -39,17 +51,42 @@ class UserModel extends ChangeNotifier {
     balanco = _receitas - _despesas;
   }
 
-  void _getAllFinancias() async {
+  Future<void> getAllFinancias() async {
     loading = true;
     _financias = await helper.getAllFinancia();
     loading = false;
     _recalcule();
   }
 
-  Future<void> saveFinancia(Financia financia) async {
-    financia = await helper.saveFinancia(financia);
-    financias.add(financia);
-    _recalcule();
+  Future<void> getAllCategoria() async {
+    categorias = await helper.getAllCategoria();
+  }
+
+  Future<void> saveFinancia(Financia financia, VoidCallback onError) async {
+    try {
+      print(financia.toString());
+      if (financia.image == '')
+        financia.image =
+            'https://static.wikia.nocookie.net/beekeepers21/images/c/c8/NotFound.png/revision/latest?cb=20200523132136';
+      else {
+        StorageReference ref = FirebaseStorage.instance.ref();
+        StorageTaskSnapshot addImg =
+            await ref.child("${basename(financia.image)}").putFile(File(financia.image)).onComplete;
+        if (addImg.error == null) {
+          financia.image = await addImg.ref.getDownloadURL();
+          print("added to Firebase Storage");
+        } else {
+          throw Exception(addImg.error);
+        }
+      }
+      financia = await helper.saveFinancia(financia);
+      financias.add(financia);
+      search = '';
+      _recalcule();
+    } catch (e) {
+      print(e);
+      onError();
+    }
   }
 
   Future<void> deleteFinancia(Financia financia) async {
